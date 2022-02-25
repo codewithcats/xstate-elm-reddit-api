@@ -1,5 +1,5 @@
 import { interpret } from "xstate";
-import { redditMachine, machineServices } from "./reddit-machine";
+import { machine as redditMachine } from "./reddit-machine";
 // @ts-ignore
 import { Elm } from "./Main.elm";
 
@@ -9,7 +9,7 @@ const elm = Elm.Main.init({
 });
 
 // @ts-ignore
-const machine = interpret(redditMachine(machineServices));
+const machine = interpret(redditMachine);
 machine.onTransition((state) => {
   console.log("state", state.value, state.context);
   elm.ports.stateChanged.send(state.context);

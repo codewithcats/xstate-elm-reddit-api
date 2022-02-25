@@ -1,7 +1,7 @@
 import { assign, createMachine } from "xstate";
 
 export type Context = {
-  subreddit: string;
+  subreddit: string | null;
   posts: any;
   subredditOptions: string[];
 };
@@ -13,7 +13,7 @@ export const machineServices = {
 
     return fetch(`https://www.reddit.com/r/${subreddit}.json`)
       .then((response) => response.json())
-      .then((json) => json.data.children.map((child) => child.data));
+      .then((json) => json.data.children.map((child: any) => child.data));
   },
 };
 
@@ -21,7 +21,6 @@ export const redditMachine = (services: typeof machineServices) =>
   createMachine(
     {
       id: "reddit",
-      tsTypes: {} as import("./reddit-machine.typegen").Typegen0,
       schema: {
         context: {} as Context,
         events: {} as SelectEvent,
@@ -66,14 +65,16 @@ export const redditMachine = (services: typeof machineServices) =>
     {
       services,
       actions: {
-        updateSubreddit: assign((context, event) => ({
+        updateSubreddit: assign<Context, SelectEvent>((context, event) => ({
           ...context,
           subreddit: event.name,
         })),
-        updatePosts: assign((context, event) => ({
+        updatePosts: assign<Context, any>((context, event) => ({
           ...context,
           posts: event.data,
         })),
       },
     }
   );
+
+export const machine = redditMachine(machineServices);

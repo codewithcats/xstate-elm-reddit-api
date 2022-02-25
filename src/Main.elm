@@ -4,16 +4,17 @@ import Browser
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
+import Json.Decode as D
 import Json.Encode as E
 
 
-port stateChanged : (Context -> msg) -> Sub msg
+port stateChanged : ({ state : E.Value, context : Context } -> msg) -> Sub msg
 
 
 port machineEvent : E.Value -> Cmd msg
 
 
-main : Program () Context Msg
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -21,6 +22,33 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
+
+
+type alias Model =
+    { state : State
+    , context : Context
+    }
+
+
+type State
+    = Idle
+    | Selected String
+
+
+stateDecoder : D.Decoder State
+stateDecoder =
+    D.oneOf
+        [ D.string
+            |> D.andThen
+                (\str ->
+                    case str of
+                        "idle" ->
+                            D.succeed Idle
+
+                        _ ->
+                            D.fail ("Unknown string value:" ++ str)
+                )
+        ]
 
 
 type alias Context =
@@ -37,28 +65,35 @@ type alias Post =
 
 
 type Msg
-    = StateChanged Context
+    = StateChanged State Context
+    | DecodeStateError D.Error
     | SubredditClicked String
 
 
-init : () -> ( Context, Cmd Msg )
+init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { subreddit = Nothing
-      , subredditOptions = []
-      , posts = Nothing
+    ( { context =
+            { subreddit = Nothing
+            , subredditOptions = []
+            , posts = Nothing
+            }
+      , state = Idle
       }
     , Cmd.none
     )
 
 
-update : Msg -> Context -> ( Context, Cmd Msg )
-update msg ctx =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case msg of
-        StateChanged context ->
-            ( context, Cmd.none )
+        StateChanged state context ->
+            ( { model | context = context, state = state }, Cmd.none )
+
+        DecodeStateError _ ->
+            ( model, Cmd.none )
 
         SubredditClicked subreddit ->
-            ( ctx
+            ( model
             , machineEvent
                 (E.object
                     [ ( "type", E.string "SELECT" )
@@ -68,8 +103,8 @@ update msg ctx =
             )
 
 
-view : Context -> Html Msg
-view context =
+view : Model -> Html Msg
+view { context } =
     div [ Attr.id "main__view" ]
         [ ul []
             (List.map
@@ -105,6 +140,14 @@ view context =
         ]
 
 
-subscriptions : Context -> Sub Msg
+subscriptions : Model -> Sub Msg
 subscriptions _ =
-    stateChanged StateChanged
+    stateChanged
+        (\{ state, context } ->
+            case D.decodeValue stateDecoder state of
+                Ok s ->
+                    StateChanged s context
+
+                Err e ->
+                    DecodeStateError e
+        )

@@ -12,7 +12,7 @@ const elm = Elm.Main.init({
 const machine = interpret(redditMachine);
 machine.onTransition((state) => {
   console.log("state", state.value, state.context);
-  elm.ports.stateChanged.send(state.context);
+  elm.ports.stateChanged.send({ state: state.value, context: state.context });
 });
 
 elm.ports.machineEvent.subscribe((event) => {

@@ -23,7 +23,21 @@ const redditMachine = createMachine({
   },
   states: {
     idle: {},
-    selected: {},
+    selected: {
+      initial: "loading",
+      states: {
+        loading: {
+          invoke: {
+            id: "fetch-subreddit",
+            src: invokeFetchSubreddit,
+            onDone: "loaded",
+            onError: "failed",
+          },
+        },
+        loaded: {},
+        failed: {},
+      },
+    },
   },
   initial: "idle",
   on: {

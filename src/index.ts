@@ -1,51 +1,65 @@
 import { createMachine, assign } from "xstate";
 
-type Context = { subreddit: string };
+type Context = { subreddit: string; posts: any };
 type SelectEvent = { type: "SELECT"; name: string };
-type RedditEvents = SelectEvent;
 
-function invokeFetchSubreddit(context: Context) {
-  const { subreddit } = context;
-
-  return fetch(`https://www.reddit.com/r/${subreddit}.json`)
-    .then((response) => response.json())
-    .then((json) => json.data.children.map((child) => child.data));
-}
-
-const redditMachine = createMachine({
-  schema: {
-    context: {} as Context,
-    events: {} as RedditEvents,
-  },
-  id: "reddit",
-  context: {
-    subreddit: null,
-  },
-  states: {
-    idle: {},
-    selected: {
-      initial: "loading",
-      states: {
-        loading: {
-          invoke: {
-            id: "fetch-subreddit",
-            src: invokeFetchSubreddit,
-            onDone: "loaded",
-            onError: "failed",
+const redditMachine = createMachine(
+  {
+    id: "reddit",
+    tsTypes: {} as import("./index.typegen").Typegen0,
+    schema: {
+      context: {} as Context,
+      events: {} as SelectEvent,
+      services: {} as {
+        fetchSubreddit: { data: any };
+      },
+    },
+    context: {
+      subreddit: null,
+      posts: null,
+    },
+    states: {
+      idle: {},
+      selected: {
+        initial: "loading",
+        states: {
+          loading: {
+            invoke: {
+              id: "fetch-subreddit",
+              src: "fetchSubreddit",
+              onDone: {
+                target: "loaded",
+                actions: "updatePosts",
+              },
+              onError: "failed",
+            },
           },
+          loaded: {},
+          failed: {},
         },
-        loaded: {},
-        failed: {},
+      },
+    },
+    initial: "idle",
+    on: {
+      SELECT: {
+        target: ".selected",
+        actions: "updateName",
       },
     },
   },
-  initial: "idle",
-  on: {
-    SELECT: {
-      target: ".selected",
-      actions: assign<Context, SelectEvent>({
-        subreddit: (_, event) => event.name,
-      }),
+  {
+    services: {
+      fetchSubreddit: async (context) => {
+        const { subreddit } = context;
+
+        return fetch(`https://www.reddit.com/r/${subreddit}.json`)
+          .then((response) => response.json())
+          .then((json) => json.data.children.map((child) => child.data));
+      },
     },
-  },
-});
+    actions: {
+      updateName: (_, event) => event.name,
+      updatePosts: (_, event) => event.data,
+    },
+  }
+);

@@ -1,4 +1,5 @@
-import { createMachine, assign } from "xstate";
+import { interpret } from "xstate";
+import { redditMachine, machineServices } from "./reddit-machine";
 // @ts-ignore
 import { Elm } from "./Main.elm";
 
@@ -7,75 +8,16 @@ const elm = Elm.Main.init({
   flags: {},
 });
 
-export type Context = { subreddit: string; posts: any };
-type SelectEvent = { type: "SELECT"; name: string };
+// @ts-ignore
+const machine = interpret(redditMachine(machineServices));
+machine.onTransition((state) => {
+  console.log("state", state.value, state.context);
+  elm.ports.stateChanged.send(state.context);
+});
 
-const machineServices = {
-  fetchSubreddit: async (context: Context) => {
-    const { subreddit } = context;
+elm.ports.machineEvent.subscribe((event) => {
+  console.log("machine event", event);
+  machine.send(event);
+});
 
-    return fetch(`https://www.reddit.com/r/${subreddit}.json`)
-      .then((response) => response.json())
-      .then((json) => json.data.children.map((child) => child.data));
-  },
-};
-
-export const redditMachine = (services: typeof machineServices) =>
-  createMachine(
-    {
-      id: "reddit",
-      tsTypes: {} as import("./index.typegen").Typegen0,
-      schema: {
-        context: {} as Context,
-        events: {} as SelectEvent,
-        services: {} as {
-          fetchSubreddit: { data: any };
-        },
-      },
-      context: {
-        subreddit: null,
-        posts: null,
-      },
-      states: {
-        idle: {},
-        selected: {
-          initial: "loading",
-          states: {
-            loading: {
-              invoke: {
-                id: "fetch-subreddit",
-                src: "fetchSubreddit",
-                onDone: {
-                  target: "loaded",
-                  actions: "updatePosts",
-                },
-                onError: "failed",
-              },
-            },
-            loaded: {},
-            failed: {},
-          },
-        },
-      },
-      initial: "idle",
-      on: {
-        SELECT: {
-          target: ".selected",
-          actions: "updateName",
-        },
-      },
-    },
-    {
-      services,
-      actions: {
-        updateName: assign((context, event) => ({
-          ...context,
-          name: event.name,
-        })),
-        updatePosts: assign((context, event) => ({
-          ...context,
-          posts: event.data,
-        })),
-      },
-    }
-  );
+machine.start();

@@ -1,5 +1,5 @@
 import { interpret } from "xstate";
-import { redditMachine, Context } from "./index";
+import { redditMachine, Context } from "./reddit-machine";
 
 describe("load subreddit", () => {
   test("load posts from selected subreddit", (done) => {

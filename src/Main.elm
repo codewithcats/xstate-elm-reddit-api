@@ -48,6 +48,7 @@ stateDecoder =
                         _ ->
                             D.fail ("Unknown string value:" ++ str)
                 )
+        , D.field "selected" D.string |> D.map Selected
         ]
 
 
@@ -104,7 +105,7 @@ update msg model =
 
 
 view : Model -> Html Msg
-view { context } =
+view { state, context } =
     div [ Attr.id "main__view" ]
         [ ul []
             (List.map
@@ -119,8 +120,11 @@ view { context } =
 
             Nothing ->
                 p [] [ text "No subreddit selected" ]
-        , case context.posts of
-            Just posts ->
+        , case ( state, context.posts ) of
+            ( Selected "loaded", Just [] ) ->
+                p [] [ text "no post found for this subreddit" ]
+
+            ( Selected "loaded", Just posts ) ->
                 ul []
                     (List.map
                         (\post ->
@@ -135,7 +139,10 @@ view { context } =
                         posts
                     )
 
-            Nothing ->
+            ( Selected "loading", _ ) ->
+                p [] [ text "loading subreddit" ]
+
+            _ ->
                 div [] []
         ]
 

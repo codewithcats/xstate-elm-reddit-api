@@ -23,7 +23,7 @@ export interface Typegen0 {
   };
   missingImplementations: {
     actions: never;
-    services: never;
+    services: "fetchSubreddit";
     guards: never;
     delays: never;
   };

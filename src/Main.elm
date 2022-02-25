@@ -26,6 +26,13 @@ main =
 type alias Context =
     { subreddit : Maybe String
     , subredditOptions : List String
+    , posts : Maybe (List Post)
+    }
+
+
+type alias Post =
+    { title : String
+    , permalink : String
     }
 
 
@@ -38,6 +45,7 @@ init : () -> ( Context, Cmd Msg )
 init _ =
     ( { subreddit = Nothing
       , subredditOptions = []
+      , posts = Nothing
       }
     , Cmd.none
     )
@@ -63,19 +71,37 @@ update msg ctx =
 view : Context -> Html Msg
 view context =
     div [ Attr.id "main__view" ]
-        [ case context.subreddit of
-            Just subreddit ->
-                h2 [] [ text subreddit ]
-
-            Nothing ->
-                p [] [ text "No subreddit selected" ]
-        , ul []
+        [ ul []
             (List.map
                 (\option ->
                     li [] [ button [ onClick (SubredditClicked option) ] [ text option ] ]
                 )
                 context.subredditOptions
             )
+        , case context.subreddit of
+            Just subreddit ->
+                h2 [] [ text subreddit ]
+
+            Nothing ->
+                p [] [ text "No subreddit selected" ]
+        , case context.posts of
+            Just posts ->
+                ul []
+                    (List.map
+                        (\post ->
+                            li []
+                                [ a
+                                    [ Attr.target "_blank"
+                                    , Attr.href post.permalink
+                                    ]
+                                    [ text post.title ]
+                                ]
+                        )
+                        posts
+                    )
+
+            Nothing ->
+                div [] []
         ]
 
 

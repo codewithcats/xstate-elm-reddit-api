@@ -9,7 +9,6 @@ describe("load subreddit", () => {
     // @ts-ignore
     const reddit = interpret(redditMachine(services))
       .onTransition((state) => {
-        console.log("state", state.value);
         if (state.matches({ selected: "loaded" })) {
           try {
             expect(state.context.posts).not.toBeNull();

@@ -1,4 +1,11 @@
 import { createMachine, assign } from "xstate";
+// @ts-ignore
+import { Elm } from "./Main.elm";
+
+const elm = Elm.Main.init({
+  node: document.querySelector("main"),
+  flags: {},
+});
 
 export type Context = { subreddit: string; posts: any };
 type SelectEvent = { type: "SELECT"; name: string };

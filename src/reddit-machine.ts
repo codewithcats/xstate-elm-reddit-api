@@ -1,4 +1,4 @@
-import { ActorRef, ActorRefFrom, assign, createMachine, spawn } from "xstate";
+import { ActorRefFrom, assign, createMachine, spawn } from "xstate";
 import { createSubredditMachine } from "./subreddit-matchine";
 
 export type Context = {

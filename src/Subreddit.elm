@@ -60,15 +60,18 @@ stateDecoder =
 view : State -> Html msg
 view state =
     div []
-        [ case state of
+        (case state of
             NoSubredditSelected ->
-                p [] [ text "No subreddit selected" ]
+                [ p [] [ text "No subreddit selected" ] ]
 
-            Loading _ ->
-                p [] [ text "Loading..." ]
+            Loading { subreddit } ->
+                [ h3 [] [ text subreddit ]
+                , p [] [ text "Loading..." ]
+                ]
 
-            Loaded { posts } ->
-                ul []
+            Loaded { posts, subreddit } ->
+                [ h3 [] [ text subreddit ]
+                , ul []
                     (List.map
                         (\post ->
                             li []
@@ -81,7 +84,10 @@ view state =
                         )
                         posts
                     )
+                ]
 
-            _ ->
-                div [] []
-        ]
+            Failed { subreddit } ->
+                [ h3 [] [ text subreddit ]
+                , p [] [ text "Error loading posts from reddit" ]
+                ]
+        )

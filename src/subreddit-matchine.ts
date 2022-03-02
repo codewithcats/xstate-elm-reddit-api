@@ -14,9 +14,9 @@ export const services = {
   fetchSubreddit: async (context: Context) => {
     const { subreddit } = context;
 
-    return fetch(`https://www.reddit.com/r/${subreddit}.json`)
-      .then((response) => response.json())
-      .then((json) => json.data.children.map((child: any) => child.data));
+    const response = await fetch(`https://www.reddit.com/r/${subreddit}.json`);
+    const json = await response.json();
+    return json.data.children.map((child: any) => child.data);
   },
 };
 

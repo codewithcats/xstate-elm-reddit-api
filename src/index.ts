@@ -9,15 +9,8 @@ const elm = Elm.Main.init({
   flags: {},
 });
 
-// @ts-ignore
 const machine = interpret(createRedditMachine(createSubredditMachine));
 machine.onTransition((state) => {
-  console.log(
-    "state",
-    state.value,
-    state.context.subredditMachine?.state.value,
-    state.context.subredditMachine?.state.context
-  );
   elm.ports.stateChanged.send(state);
 });
 

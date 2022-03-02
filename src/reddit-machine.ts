@@ -1,9 +1,9 @@
-import { ActorRef, assign, createMachine, spawn } from "xstate";
+import { ActorRef, ActorRefFrom, assign, createMachine, spawn } from "xstate";
 import { createSubredditMachine } from "./subreddit-matchine";
 
 export type Context = {
   subredditOptions: string[];
-  subredditMachine: ActorRef<any>;
+  subredditMachine: ActorRefFrom<ReturnType<typeof createSubredditMachine>>;
 };
 type SelectEvent = { type: "SELECT"; subreddit: string };
 

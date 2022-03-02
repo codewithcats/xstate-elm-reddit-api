@@ -6,15 +6,16 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
+import Subreddit
 
 
-port stateChanged : ({ state : E.Value, context : Context } -> msg) -> Sub msg
+port stateChanged : (E.Value -> msg) -> Sub msg
 
 
 port machineEvent : E.Value -> Cmd msg
 
 
-main : Program () Model Msg
+main : Program () State Msg
 main =
     Browser.element
         { init = init
@@ -24,136 +25,111 @@ main =
         }
 
 
-type alias Model =
-    { state : State
-    , context : Context
+type State
+    = Idle { subredditOptions : List String }
+    | SubredditSelected
+        { subredditOptions : List String
+        , subreddit : Subreddit.State
+        }
+
+
+{-|
+
+    {
+        "value": "subredditSelected",
+        "context": {
+            "subreddit": {},
+            "subredditOptions": ["elm", "react"]
+        }
     }
 
-
-type State
-    = Idle
-    | Selected String
-
-
+-}
 stateDecoder : D.Decoder State
 stateDecoder =
-    D.oneOf
-        [ D.string
-            |> D.andThen
-                (\str ->
-                    case str of
-                        "idle" ->
-                            D.succeed Idle
+    D.field "value" D.string
+        |> D.andThen
+            (\value ->
+                case value of
+                    "idle" ->
+                        D.at [ "context", "subredditOptions" ] (D.list D.string) |> D.andThen (\options -> D.succeed (Idle { subredditOptions = options }))
 
-                        _ ->
-                            D.fail ("Unknown string value:" ++ str)
-                )
-        , D.field "selected" D.string |> D.map Selected
-        ]
+                    "subredditSelected" ->
+                        D.map2 (\options subreddit -> { subredditOptions = options, subreddit = subreddit })
+                            (D.at [ "context", "subredditOptions" ] (D.list D.string))
+                            (D.at [ "context", "subredditMachine", "state" ] Subreddit.stateDecoder)
+                            |> D.andThen (SubredditSelected >> D.succeed)
 
-
-type alias Context =
-    { subreddit : Maybe String
-    , subredditOptions : List String
-    , posts : Maybe (List Post)
-    }
-
-
-type alias Post =
-    { title : String
-    , permalink : String
-    }
+                    v ->
+                        D.fail ("Unknown state: " ++ v)
+            )
 
 
 type Msg
-    = StateChanged State Context
+    = StateChanged State
     | DecodeStateError D.Error
     | SubredditClicked String
 
 
-init : () -> ( Model, Cmd Msg )
+init : () -> ( State, Cmd Msg )
 init _ =
-    ( { context =
-            { subreddit = Nothing
-            , subredditOptions = []
-            , posts = Nothing
-            }
-      , state = Idle
-      }
+    ( Idle { subredditOptions = [] }
     , Cmd.none
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> State -> ( State, Cmd Msg )
+update msg state =
     case msg of
-        StateChanged state context ->
-            ( { model | context = context, state = state }, Cmd.none )
+        StateChanged s ->
+            ( s, Cmd.none )
 
         DecodeStateError _ ->
-            ( model, Cmd.none )
+            ( state, Cmd.none )
 
         SubredditClicked subreddit ->
-            ( model
+            ( state
             , machineEvent
                 (E.object
                     [ ( "type", E.string "SELECT" )
-                    , ( "name", E.string subreddit )
+                    , ( "subreddit", E.string subreddit )
                     ]
                 )
             )
 
 
-view : Model -> Html Msg
-view { state, context } =
+view : State -> Html Msg
+view state =
     div [ Attr.id "main__view" ]
-        [ ul []
-            (List.map
-                (\option ->
-                    li [] [ button [ onClick (SubredditClicked option) ] [ text option ] ]
-                )
-                context.subredditOptions
+        (case state of
+            Idle { subredditOptions } ->
+                [ viewSubredditOptions subredditOptions
+                ]
+
+            SubredditSelected { subredditOptions, subreddit } ->
+                [ viewSubredditOptions subredditOptions
+                , Subreddit.view subreddit
+                ]
+        )
+
+
+viewSubredditOptions : List String -> Html Msg
+viewSubredditOptions options =
+    ul []
+        (List.map
+            (\option ->
+                li [] [ button [ onClick (SubredditClicked option) ] [ text option ] ]
             )
-        , case context.subreddit of
-            Just subreddit ->
-                h2 [] [ text subreddit ]
-
-            Nothing ->
-                p [] [ text "No subreddit selected" ]
-        , case ( state, context.posts ) of
-            ( Selected "loaded", Just [] ) ->
-                p [] [ text "no post found for this subreddit" ]
-
-            ( Selected "loaded", Just posts ) ->
-                ul []
-                    (List.map
-                        (\post ->
-                            li []
-                                [ a
-                                    [ Attr.target "_blank"
-                                    , Attr.href post.permalink
-                                    ]
-                                    [ text post.title ]
-                                ]
-                        )
-                        posts
-                    )
-
-            ( Selected "loading", _ ) ->
-                p [] [ text "loading subreddit" ]
-
-            _ ->
-                div [] []
-        ]
+            options
+        )
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : State -> Sub Msg
 subscriptions _ =
     stateChanged
-        (\{ state, context } ->
-            case D.decodeValue stateDecoder state of
+        (\value ->
+            case D.decodeValue stateDecoder value of
                 Ok s ->
-                    StateChanged s context
+                    StateChanged s
 
                 Err e ->
                     DecodeStateError e

@@ -1,80 +1,56 @@
-import { assign, createMachine } from "xstate";
+import { ActorRef, assign, createMachine, spawn } from "xstate";
+import { createSubredditMachine } from "./subreddit-matchine";
 
 export type Context = {
-  subreddit: string | null;
-  posts: any;
   subredditOptions: string[];
+  subredditMachine: ActorRef<any>;
 };
-type SelectEvent = { type: "SELECT"; name: string };
+type SelectEvent = { type: "SELECT"; subreddit: string };
 
-export const machineServices = {
-  fetchSubreddit: async (context: Context) => {
-    const { subreddit } = context;
-
-    return fetch(`https://www.reddit.com/r/${subreddit}.json`)
-      .then((response) => response.json())
-      .then((json) => json.data.children.map((child: any) => child.data));
-  },
-};
-
-export const redditMachine = (services: typeof machineServices) =>
+export const createRedditMachine = (
+  _createSubredditMachine: typeof createSubredditMachine
+) =>
   createMachine(
     {
+      tsTypes: {} as import("./reddit-machine.typegen").Typegen0,
       id: "reddit",
       schema: {
         context: {} as Context,
         events: {} as SelectEvent,
-        services: {} as {
-          fetchSubreddit: { data: any };
-        },
       },
       context: {
-        subreddit: null,
-        posts: null,
         subredditOptions: ["elm", "react", "angular"],
+        subredditMachine: null,
       },
       states: {
         idle: {},
-        selected: {
-          initial: "loading",
-          states: {
-            loading: {
-              invoke: {
-                id: "fetch-subreddit",
-                src: "fetchSubreddit",
-                onDone: {
-                  target: "loaded",
-                  actions: "updatePosts",
-                },
-                onError: "failed",
-              },
-            },
-            loaded: {},
-            failed: {},
-          },
-        },
+        subredditSelected: {},
       },
       initial: "idle",
       on: {
         SELECT: {
-          target: ".selected",
+          target: ".subredditSelected",
           actions: "updateSubreddit",
         },
       },
     },
     {
-      services,
       actions: {
-        updateSubreddit: assign<Context, SelectEvent>((context, event) => ({
-          ...context,
-          subreddit: event.name,
-        })),
-        updatePosts: assign<Context, any>((context, event) => ({
-          ...context,
-          posts: event.data,
-        })),
+        updateSubreddit: assign((context, event) => {
+          if (context.subredditMachine) {
+            context.subredditMachine.send({
+              type: "SUBREDDIT_UPDATED",
+              subreddit: event.subreddit,
+            });
+            return context;
+          } else {
+            const subredditMachine = spawn(
+              _createSubredditMachine(event.subreddit),
+              { sync: true }
+            );
+            return { ...context, subredditMachine };
+          }
+        }),
       },
     }
   );
-
-export const machine = redditMachine(machineServices);

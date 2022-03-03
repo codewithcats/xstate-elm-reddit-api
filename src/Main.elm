@@ -24,7 +24,7 @@ main =
 type alias Model =
     { state : State
     , subreddit : Subreddit.State
-    , searchBox : SearchBox.State
+    , searchBox : SearchBox.Model
     , subredditOptions : List String
     }
 
@@ -85,11 +85,11 @@ subredditDecoder =
         ]
 
 
-searchBoxDecoder : D.Decoder SearchBox.State
+searchBoxDecoder : D.Decoder SearchBox.Model
 searchBoxDecoder =
     D.oneOf
-        [ D.at [ "context", "searchBox", "state" ] SearchBox.stateDecoder
-        , D.succeed SearchBox.initialState
+        [ D.at [ "context", "searchBox", "state" ] SearchBox.modelDecoder
+        , D.succeed SearchBox.initialModel
         ]
 
 
@@ -104,7 +104,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { state = Idle
       , subreddit = Subreddit.initialState
-      , searchBox = SearchBox.initialState
+      , searchBox = SearchBox.initialModel
       , subredditOptions = []
       }
     , Cmd.none

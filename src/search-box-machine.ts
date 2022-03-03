@@ -21,14 +21,27 @@ export const searchBoxMachine = createMachine(
     states: {
       idle: {
         on: {
-          "SEARCH_BOX.SEARCH_TERM_CHANGED": {
-            target: "idle",
-            actions: "updateSearchTerm",
-          },
+          "SEARCH_BOX.SEARCH_TERM_CHANGED": [
+            {
+              target: "ready",
+              actions: "updateSearchTerm",
+              cond: "isSearchTermLenghtValid",
+            },
+            { target: "idle", actions: "updateSearchTerm" },
+          ],
         },
       },
       ready: {
-        on: {},
+        on: {
+          "SEARCH_BOX.SEARCH_TERM_CHANGED": [
+            {
+              target: "ready",
+              actions: "updateSearchTerm",
+              cond: "isSearchTermLenghtValid",
+            },
+            { target: "idle", actions: "updateSearchTerm" },
+          ],
+        },
       },
       searching: {
         on: {},
@@ -44,6 +57,11 @@ export const searchBoxMachine = createMachine(
           searchTerm: event.searchTerm,
         };
       }),
+    },
+    guards: {
+      isSearchTermLenghtValid: (_, event) => {
+        return event.searchTerm.length > 3;
+      },
     },
   }
 );

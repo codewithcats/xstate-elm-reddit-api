@@ -8,15 +8,21 @@ import Json.Encode as E
 import MachineConnector
 
 
+type alias Model =
+    { state : State
+    , searchTerm : String
+    }
+
+
+initialModel : Model
+initialModel =
+    { state = Idle, searchTerm = "" }
+
+
 type State
-    = Idle String
-    | Ready String
-    | Searching String
-
-
-initialState : State
-initialState =
-    Idle ""
+    = Idle
+    | Ready
+    | Searching
 
 
 {-|
@@ -29,6 +35,11 @@ initialState =
     }
 
 -}
+modelDecoder : D.Decoder Model
+modelDecoder =
+    D.map2 Model stateDecoder searchTermDecoder
+
+
 stateDecoder : D.Decoder State
 stateDecoder =
     D.field "value" D.string
@@ -36,13 +47,13 @@ stateDecoder =
             (\value ->
                 case value of
                     "idle" ->
-                        searchTermDecoder |> D.andThen (Idle >> D.succeed)
+                        D.succeed Idle
 
                     "ready" ->
-                        searchTermDecoder |> D.andThen (Ready >> D.succeed)
+                        D.succeed Ready
 
                     "searching" ->
-                        searchTermDecoder |> D.andThen (Searching >> D.succeed)
+                        D.succeed Searching
 
                     v ->
                         D.fail ("Unknown state: " ++ v)
@@ -58,7 +69,7 @@ type Msg
     = TextChanged String
 
 
-update : Msg -> State -> ( State, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg state =
     case msg of
         TextChanged t ->
@@ -72,18 +83,13 @@ update msg state =
             )
 
 
-view : State -> Html Msg
-view state =
-    case state of
-        Idle searchTerm ->
-            div []
-                [ input
-                    [ Attr.type_ "text"
-                    , onInput TextChanged
-                    , Attr.value searchTerm
-                    ]
-                    []
-                ]
-
-        _ ->
-            div [] []
+view : Model -> Html Msg
+view model =
+    div []
+        [ input
+            [ Attr.type_ "text"
+            , onInput TextChanged
+            , Attr.value model.searchTerm
+            ]
+            []
+        ]

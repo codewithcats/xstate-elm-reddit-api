@@ -1,9 +1,11 @@
 import { ActorRefFrom, assign, createMachine, spawn } from "xstate";
 import { createSubredditMachine } from "./subreddit-matchine";
+import { searchBoxMachine } from "./search-box-machine";
 
 export type Context = {
   subredditOptions: string[];
   subredditMachine: ActorRefFrom<ReturnType<typeof createSubredditMachine>>;
+  searchBox: ActorRefFrom<typeof searchBoxMachine>;
 };
 type SelectEvent = { type: "SELECT"; subreddit: string };
 
@@ -21,9 +23,12 @@ export const createRedditMachine = (
       context: {
         subredditOptions: ["elm", "react", "angular"],
         subredditMachine: null,
+        searchBox: null,
       },
       states: {
-        idle: {},
+        idle: {
+          entry: "updateSearchBox",
+        },
         subredditSelected: {},
       },
       initial: "idle",
@@ -49,6 +54,16 @@ export const createRedditMachine = (
               { sync: true }
             );
             return { ...context, subredditMachine };
+          }
+        }),
+        updateSearchBox: assign((context) => {
+          if (context.searchBox) {
+            return context;
+          } else {
+            const searchBox = spawn(searchBoxMachine, {
+              sync: true,
+            });
+            return { ...context, searchBox };
           }
         }),
       },

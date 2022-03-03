@@ -3,8 +3,7 @@
 export interface Typegen0 {
   "@@xstate/typegen": true;
   eventsCausingActions: {
-    updateSubreddit: "SELECT";
-    updateSearchBox: "xstate.init";
+    updateSearchTerm: "SEARCH_BOX.SEARCH_TERM_CHANGED";
   };
   internalEvents: {
     "xstate.init": { type: "xstate.init" };
@@ -19,6 +18,6 @@ export interface Typegen0 {
   eventsCausingServices: {};
   eventsCausingGuards: {};
   eventsCausingDelays: {};
-  matchesStates: "idle" | "subredditSelected";
+  matchesStates: "idle" | "ready" | "searching";
   tags: never;
 }

@@ -19,8 +19,9 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
+    "@xstate/inspect": "^0.6.3",
     "elm": "^0.19.1-5",
     "elm-format": "^0.8.5",
-    "xstate": "^4.30.2"
+    "xstate": "^4.30.3"
   }
 }

@@ -1,4 +1,4 @@
-port module Main exposing (main)
+module Main exposing (main)
 
 import Browser
 import Html exposing (..)
@@ -6,16 +6,12 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
+import MachineConnector
+import SearchBox
 import Subreddit
 
 
-port stateChanged : (E.Value -> msg) -> Sub msg
-
-
-port machineEvent : E.Value -> Cmd msg
-
-
-main : Program () State Msg
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
@@ -25,12 +21,17 @@ main =
         }
 
 
+type alias Model =
+    { state : State
+    , subreddit : Subreddit.State
+    , searchBox : SearchBox.State
+    , subredditOptions : List String
+    }
+
+
 type State
-    = Idle { subredditOptions : List String }
+    = Idle
     | SubredditSelected
-        { subredditOptions : List String
-        , subreddit : Subreddit.State
-        }
 
 
 {-|
@@ -39,11 +40,21 @@ type State
         "value": "subredditSelected",
         "context": {
             "subreddit": {},
-            "subredditOptions": ["elm", "react"]
+            "subredditOptions": ["elm", "react"],
+            "searchBox": {}
         }
     }
 
 -}
+modelDecoder : D.Decoder Model
+modelDecoder =
+    D.map4 Model
+        stateDecoder
+        subredditDecoder
+        searchBoxDecoder
+        subredditOptionsDecoder
+
+
 stateDecoder : D.Decoder State
 stateDecoder =
     D.field "value" D.string
@@ -51,44 +62,67 @@ stateDecoder =
             (\value ->
                 case value of
                     "idle" ->
-                        D.at [ "context", "subredditOptions" ] (D.list D.string) |> D.andThen (\options -> D.succeed (Idle { subredditOptions = options }))
+                        D.succeed Idle
 
                     "subredditSelected" ->
-                        D.map2 (\options subreddit -> { subredditOptions = options, subreddit = subreddit })
-                            (D.at [ "context", "subredditOptions" ] (D.list D.string))
-                            (D.at [ "context", "subredditMachine", "state" ] Subreddit.stateDecoder)
-                            |> D.andThen (SubredditSelected >> D.succeed)
+                        D.succeed SubredditSelected
 
                     v ->
                         D.fail ("Unknown state: " ++ v)
             )
 
 
+subredditOptionsDecoder : D.Decoder (List String)
+subredditOptionsDecoder =
+    D.at [ "context", "subredditOptions" ] (D.list D.string)
+
+
+subredditDecoder : D.Decoder Subreddit.State
+subredditDecoder =
+    D.oneOf
+        [ D.at [ "context", "subredditMachine", "state" ] Subreddit.stateDecoder
+        , D.succeed Subreddit.initialState
+        ]
+
+
+searchBoxDecoder : D.Decoder SearchBox.State
+searchBoxDecoder =
+    D.oneOf
+        [ D.at [ "context", "searchBox", "state" ] SearchBox.stateDecoder
+        , D.succeed SearchBox.initialState
+        ]
+
+
 type Msg
-    = StateChanged State
+    = StateChanged Model
     | DecodeStateError D.Error
     | SubredditClicked String
+    | SearchBoxMsg SearchBox.Msg
 
 
-init : () -> ( State, Cmd Msg )
+init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Idle { subredditOptions = [] }
+    ( { state = Idle
+      , subreddit = Subreddit.initialState
+      , searchBox = SearchBox.initialState
+      , subredditOptions = []
+      }
     , Cmd.none
     )
 
 
-update : Msg -> State -> ( State, Cmd Msg )
-update msg state =
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case msg of
-        StateChanged s ->
-            ( s, Cmd.none )
+        StateChanged m ->
+            ( m, Cmd.none )
 
         DecodeStateError _ ->
-            ( state, Cmd.none )
+            ( model, Cmd.none )
 
         SubredditClicked subreddit ->
-            ( state
-            , machineEvent
+            ( model
+            , MachineConnector.event
                 (E.object
                     [ ( "type", E.string "SELECT" )
                     , ( "subreddit", E.string subreddit )
@@ -96,18 +130,25 @@ update msg state =
                 )
             )
 
+        SearchBoxMsg msg_ ->
+            SearchBox.update msg_ model.searchBox
+                |> Tuple.mapBoth
+                    (\m -> { model | searchBox = m })
+                    (Cmd.map SearchBoxMsg)
 
-view : State -> Html Msg
-view state =
+
+view : Model -> Html Msg
+view model =
     div [ Attr.id "main__view" ]
-        (case state of
-            Idle { subredditOptions } ->
-                [ viewSubredditOptions subredditOptions
+        (case model.state of
+            Idle ->
+                [ viewSubredditOptions model.subredditOptions
+                , SearchBox.view model.searchBox |> map SearchBoxMsg
                 ]
 
-            SubredditSelected { subredditOptions, subreddit } ->
-                [ viewSubredditOptions subredditOptions
-                , Subreddit.view subreddit
+            SubredditSelected ->
+                [ viewSubredditOptions model.subredditOptions
+                , Subreddit.view model.subreddit
                 ]
         )
 
@@ -123,13 +164,13 @@ viewSubredditOptions options =
         )
 
 
-subscriptions : State -> Sub Msg
+subscriptions : Model -> Sub Msg
 subscriptions _ =
-    stateChanged
+    MachineConnector.stateChanged
         (\value ->
-            case D.decodeValue stateDecoder value of
-                Ok s ->
-                    StateChanged s
+            case D.decodeValue modelDecoder value of
+                Ok m ->
+                    StateChanged m
 
                 Err e ->
                     DecodeStateError e

@@ -23,6 +23,11 @@ type State
     | Failed { subreddit : String }
 
 
+initialState : State
+initialState =
+    NoSubredditSelected
+
+
 {-|
 
     {

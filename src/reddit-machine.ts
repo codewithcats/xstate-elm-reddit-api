@@ -1,6 +1,7 @@
 import { ActorRefFrom, assign, createMachine, spawn } from "xstate";
 import { createSubredditMachine } from "./subreddit-matchine";
 import { searchBoxMachine } from "./search-box-machine";
+import { registerActor } from "./actor-registry";
 
 export type Context = {
   subredditOptions: string[];
@@ -63,6 +64,7 @@ export const createRedditMachine = (
             const searchBox = spawn(searchBoxMachine, {
               sync: true,
             });
+            registerActor(searchBox, "SEARCH_BOX");
             return { ...context, searchBox };
           }
         }),

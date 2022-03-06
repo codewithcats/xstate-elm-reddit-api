@@ -1,9 +1,10 @@
-import { interpret } from "xstate";
+import { ActorRef, interpret } from "xstate";
 import { createRedditMachine } from "./reddit-machine";
 import { createSubredditMachine } from "./subreddit-matchine";
 import { inspect } from "@xstate/inspect";
 // @ts-ignore
 import { Elm } from "./Main.elm";
+import { getActor } from "./actor-registry";
 
 inspect({
   // options
@@ -16,25 +17,23 @@ const elm = Elm.Main.init({
   flags: {},
 });
 
-const machine = interpret(createRedditMachine(createSubredditMachine), {
+const redditMachine = interpret(createRedditMachine(createSubredditMachine), {
   devTools: true,
 });
 
-machine.onTransition((state) => {
+redditMachine.onTransition((state) => {
   elm.ports.stateChanged.send(state);
 });
 
 elm.ports.event.subscribe((event: any) => {
   console.log("machine event", event);
-  const [machineName] = (event.type as string).split(".");
-  switch (machineName) {
-    case "SEARCH_BOX": {
-      machine.getSnapshot().context.searchBox.send(event);
-    }
-    default: {
-      machine.send(event);
-    }
+  const [machineId] = (event.type as string).split(".");
+  const machine = getActor<ActorRef<any>>(machineId);
+  if (machine) {
+    machine.send(event);
+  } else {
+    redditMachine.send(event);
   }
 });
 
-machine.start();
+redditMachine.start();

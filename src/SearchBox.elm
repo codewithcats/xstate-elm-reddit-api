@@ -92,4 +92,5 @@ view model =
             , Attr.value model.searchTerm
             ]
             []
+        , button [ Attr.disabled (model.state == Idle) ] [ text "Search Reddit" ]
         ]

@@ -18,10 +18,7 @@ export const searchBoxMachine = createMachine(
     },
     states: {
       idle: {
-        entry: sendUpdate<
-          Context,
-          { type: "SEARCH_BOX.SEARCH_TERM_CHANGED"; searchTerm: string }
-        >(),
+        entry: sendUpdate<Context, MachineEvent>(),
         on: {
           "SEARCH_BOX.SEARCH_TERM_CHANGED": [
             {
@@ -33,10 +30,7 @@ export const searchBoxMachine = createMachine(
         },
       },
       ready: {
-        entry: sendUpdate<
-          Context,
-          { type: "SEARCH_BOX.SEARCH_TERM_CHANGED"; searchTerm: string }
-        >(),
+        entry: sendUpdate<Context, MachineEvent>(),
         on: {
           "SEARCH_BOX.SEARCH_TERM_CHANGED": [
             {

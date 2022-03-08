@@ -28,7 +28,7 @@ export const createRedditMachine = (
       },
       states: {
         idle: {
-          entry: "updateSearchBox",
+          entry: ["updateSearchBox", "updateSubreddit"],
         },
         subredditSelected: {},
       },
@@ -50,11 +50,10 @@ export const createRedditMachine = (
             });
             return context;
           } else {
-            const subredditMachine = spawn(
-              _createSubredditMachine(event.subreddit),
-              { sync: true }
-            );
-            return { ...context, subredditMachine };
+            const machine = _createSubredditMachine(event.subreddit);
+            const subredditActor = spawn(machine, { sync: false });
+            registerActor("SUBREDDIT", subredditActor, machine.events);
+            return { ...context, subredditMachine: subredditActor };
           }
         }),
         updateSearchBox: assign((context) => {
@@ -62,9 +61,9 @@ export const createRedditMachine = (
             return context;
           } else {
             const searchBox = spawn(searchBoxMachine, {
-              sync: true,
+              sync: false,
             });
-            registerActor(searchBox, "SEARCH_BOX");
+            registerActor("SEARCH_BOX", searchBox, searchBoxMachine.events);
             return { ...context, searchBox };
           }
         }),

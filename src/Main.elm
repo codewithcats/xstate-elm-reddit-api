@@ -140,17 +140,10 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ Attr.id "main__view" ]
-        (case model.state of
-            Idle ->
-                [ viewSubredditOptions model.subredditOptions
-                , SearchBox.view model.searchBox |> map SearchBoxMsg
-                ]
-
-            SubredditSelected ->
-                [ viewSubredditOptions model.subredditOptions
-                , Subreddit.view model.subreddit
-                ]
-        )
+        [ viewSubredditOptions model.subredditOptions
+        , SearchBox.view model.searchBox |> map SearchBoxMsg
+        , Subreddit.view model.subreddit
+        ]
 
 
 viewSubredditOptions : List String -> Html Msg

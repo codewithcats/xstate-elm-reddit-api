@@ -4,7 +4,9 @@ export interface Typegen0 {
   "@@xstate/typegen": true;
   eventsCausingActions: {
     updateSubreddit: "SUBREDDIT_UPDATED";
+    updateSubredditWithSerchTerm: "SEARCH_BOX.SEARCH_CLICKED";
     updatePosts: "done.invoke.fetch-subreddit";
+    notifyLoaded: "done.invoke.fetch-subreddit";
   };
   internalEvents: {
     "done.invoke.fetch-subreddit": {
@@ -28,10 +30,12 @@ export interface Typegen0 {
     delays: never;
   };
   eventsCausingServices: {
-    fetchSubreddit: "SUBREDDIT_UPDATED";
+    fetchSubreddit: "SUBREDDIT_UPDATED" | "SEARCH_BOX.SEARCH_CLICKED";
   };
-  eventsCausingGuards: {};
+  eventsCausingGuards: {
+    isSubredditValid: "SUBREDDIT_UPDATED";
+  };
   eventsCausingDelays: {};
-  matchesStates: "loading" | "loaded" | "failed";
+  matchesStates: "idle" | "loading" | "loaded" | "failed";
   tags: never;
 }

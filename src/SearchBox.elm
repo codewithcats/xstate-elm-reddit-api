@@ -2,7 +2,7 @@ module SearchBox exposing (..)
 
 import Html exposing (..)
 import Html.Attributes as Attr
-import Html.Events exposing (onInput)
+import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
 import MachineConnector
@@ -67,17 +67,28 @@ searchTermDecoder =
 
 type Msg
     = TextChanged String
+    | SearchClicked
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg state =
+update msg model =
     case msg of
         TextChanged t ->
-            ( state
+            ( { model | searchTerm = t }
             , MachineConnector.event
                 (E.object
                     [ ( "type", E.string "SEARCH_BOX.SEARCH_TERM_CHANGED" )
                     , ( "searchTerm", E.string t )
+                    ]
+                )
+            )
+
+        SearchClicked ->
+            ( model
+            , MachineConnector.event
+                (E.object
+                    [ ( "type", E.string "SEARCH_BOX.SEARCH_CLICKED" )
+                    , ( "searchTerm", E.string model.searchTerm )
                     ]
                 )
             )
@@ -92,5 +103,17 @@ view model =
             , Attr.value model.searchTerm
             ]
             []
-        , button [ Attr.disabled (model.state == Idle) ] [ text "Search Reddit" ]
+        , button
+            [ Attr.disabled (List.member model.state [ Idle, Searching ])
+            , onClick SearchClicked
+            ]
+            [ text
+                (case model.state of
+                    Searching ->
+                        "Searching..."
+
+                    _ ->
+                        "Search Reddit"
+                )
+            ]
         ]

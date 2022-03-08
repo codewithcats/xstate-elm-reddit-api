@@ -1,4 +1,5 @@
-import { assign, createMachine } from "xstate";
+import { assign, sendUpdate, createMachine } from "xstate";
+import { MachineEvent } from "./events";
 
 interface Context {
   searchTerm: string;
@@ -10,16 +11,17 @@ export const searchBoxMachine = createMachine(
     id: "search-box",
     schema: {
       context: {} as Context,
-      events: {} as {
-        type: "SEARCH_BOX.SEARCH_TERM_CHANGED";
-        searchTerm: string;
-      },
+      events: {} as MachineEvent,
     },
     context: {
       searchTerm: "",
     },
     states: {
       idle: {
+        entry: sendUpdate<
+          Context,
+          { type: "SEARCH_BOX.SEARCH_TERM_CHANGED"; searchTerm: string }
+        >(),
         on: {
           "SEARCH_BOX.SEARCH_TERM_CHANGED": [
             {
@@ -27,24 +29,33 @@ export const searchBoxMachine = createMachine(
               actions: "updateSearchTerm",
               cond: "isSearchTermLenghtValid",
             },
-            { target: "idle", actions: "updateSearchTerm" },
           ],
         },
       },
       ready: {
+        entry: sendUpdate<
+          Context,
+          { type: "SEARCH_BOX.SEARCH_TERM_CHANGED"; searchTerm: string }
+        >(),
         on: {
           "SEARCH_BOX.SEARCH_TERM_CHANGED": [
             {
-              target: "ready",
+              target: "idle",
               actions: "updateSearchTerm",
-              cond: "isSearchTermLenghtValid",
+              cond: "isSearchTermLenghtInvalid",
             },
-            { target: "idle", actions: "updateSearchTerm" },
           ],
+          "SEARCH_BOX.SEARCH_CLICKED": {
+            target: "searching",
+          },
         },
       },
       searching: {
-        on: {},
+        on: {
+          "SUBREDDIT.LOADED": {
+            target: "ready",
+          },
+        },
       },
     },
     initial: "idle",
@@ -61,6 +72,9 @@ export const searchBoxMachine = createMachine(
     guards: {
       isSearchTermLenghtValid: (_, event) => {
         return event.searchTerm.length > 3;
+      },
+      isSearchTermLenghtInvalid: (_, event) => {
+        return event.searchTerm.length <= 3;
       },
     },
   }

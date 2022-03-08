@@ -1,4 +1,6 @@
 import { assign, createMachine } from "xstate";
+import { sendEvent } from "./actor-registry";
+import type { MachineEvent } from "./events";
 
 interface Context {
   posts: Post[];
@@ -30,20 +32,21 @@ export const subredditMachine = (services: Services) => (subreddit: string) =>
       schema: {
         context: {} as Context,
         services: {} as { fetchSubreddit: { data: Post[] } },
-        events: {} as { type: "SUBREDDIT_UPDATED"; subreddit: string },
+        events: {} as MachineEvent,
       },
       context: {
         posts: [],
         subreddit,
       },
       states: {
+        idle: {},
         loading: {
           invoke: {
             id: "fetch-subreddit",
             src: "fetchSubreddit",
             onDone: {
               target: "loaded",
-              actions: "updatePosts",
+              actions: ["updatePosts", "notifyLoaded"],
             },
             onError: "failed",
           },
@@ -51,11 +54,16 @@ export const subredditMachine = (services: Services) => (subreddit: string) =>
         loaded: {},
         failed: {},
       },
-      initial: "loading",
+      initial: "idle",
       on: {
         SUBREDDIT_UPDATED: {
           target: ".loading",
           actions: "updateSubreddit",
+          cond: "isSubredditValid",
+        },
+        "SEARCH_BOX.SEARCH_CLICKED": {
+          target: ".loading",
+          actions: "updateSubredditWithSerchTerm",
         },
       },
     },
@@ -74,6 +82,20 @@ export const subredditMachine = (services: Services) => (subreddit: string) =>
             subreddit: event.subreddit,
           };
         }),
+        updateSubredditWithSerchTerm: assign((context, event) => {
+          return {
+            ...context,
+            subreddit: event.searchTerm,
+          };
+        }),
+        notifyLoaded: () => {
+          sendEvent({ type: "SUBREDDIT.LOADED" });
+        },
+      },
+      guards: {
+        isSubredditValid: (_, event) => {
+          return event.subreddit.length > 0;
+        },
       },
     }
   );

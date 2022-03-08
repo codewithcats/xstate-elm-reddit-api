@@ -18,6 +18,7 @@ export interface Typegen0 {
   eventsCausingServices: {};
   eventsCausingGuards: {
     isSearchTermLenghtValid: "SEARCH_BOX.SEARCH_TERM_CHANGED";
+    isSearchTermLenghtInvalid: "SEARCH_BOX.SEARCH_TERM_CHANGED";
   };
   eventsCausingDelays: {};
   matchesStates: "idle" | "ready" | "searching";
